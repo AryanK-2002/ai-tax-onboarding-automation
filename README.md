@@ -203,7 +203,7 @@ This enables advisors to immediately begin client engagement.
 
 ---
 
-## n8n Nodes Used
+## n8n Nodes Used :
 
 | Node | Purpose |
 |--------|---------|
@@ -245,7 +245,7 @@ This enables advisors to immediately begin client engagement.
 
 ---
 
-## Example Workflow Output
+## Example Workflow Output :
 
 ```json
 {
