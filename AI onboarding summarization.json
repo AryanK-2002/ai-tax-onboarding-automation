@@ -1,0 +1,461 @@
+{
+  "name": "AI onboarding summarization",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "tax-intake",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "3624054a-6be4-45ea-93b7-a05ecbada0ce",
+      "name": "Webhook",
+      "webhookId": "26b647da-a35b-4c8b-856c-97f1884828ce"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fields = $json.body.data.fields;\n\nfunction getField(label) {\n  const field = fields.find(f => f.label === label);\n\n  if (!field) return \"\";\n\n  // Handle multiple choice fields\n  if (field.options && field.value) {\n\n    const selectedId = field.value[0];\n\n    const option = field.options.find(\n      o => o.id === selectedId\n    );\n\n    return option ? option.text : \"\";\n  }\n\n  return field.value;\n}\n\nreturn [{\n  name: getField(\"Full Name\"),\n  email: getField(\"Email\"),\n  income_type: getField(\"Income Type\"),\n  annual_income: getField(\"Annual Income(in INR)\"),\n  form16: getField(\"Form16 Uploaded?\"),\n  rent: getField(\"Rent Receipt Uploaded?\"),\n  investment: getField(\"Investment Proof Uploaded?\")\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "a9eb4ccc-5528-492a-b355-a35b55941da2",
+      "name": "Extract Form Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "let missing = [];\n\nif ($json.form16 !== \"Yes\")\n  missing.push(\"Form16\");\n\nif ($json.rent !== \"Yes\")\n  missing.push(\"Rent Receipt\");\n\nif ($json.investment !== \"Yes\")\n  missing.push(\"Investment Proof\");\n\n$json.missing_docs = missing.join(\", \");\n\nreturn $input.item;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ],
+      "id": "4d96bb22-3309-4f01-81a8-7a94ce8b111e",
+      "name": "Missing Docs Check"
+    },
+    {
+      "parameters": {
+        "jsCode": "let complexity = \"Simple\";\n\nif (\n  $json.income_type === \"Business\" ||\n  $json.income_type === \"Multiple Income Sources\"\n) {\n  complexity = \"Complex\";\n}\n\nif (\n  complexity === \"Simple\" &&\n  $json.missing_docs !== \"\"\n) {\n  complexity = \"Needs Review\";\n}\n\n$json.complexity = complexity;\n\nreturn $input.item;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ],
+      "id": "80fa1390-926c-4d11-8170-1190b738a92a",
+      "name": "Complexity Classifier"
+    },
+    {
+      "parameters": {
+        "jsCode": "const missingDocs =\n  !$json.missing_docs ||\n  $json.missing_docs.trim() === \"\"\n    ? \"None\"\n    : $json.missing_docs;\n\nconst summary = `\nCLIENT SUMMARY\n\nClient Name: ${$json.name}\n\nEmail: ${$json.email}\n\nIncome Type: ${$json.income_type}\n\nAnnual Income: ₹${Number($json.annual_income).toLocaleString('en-IN')}\n\nComplexity: ${$json.complexity}\n\nMissing Documents:\n${missingDocs}\n\nSuggested Action:\n${\n  $json.complexity === \"Complex\"\n    ? \"Route to Senior Advisor\"\n    : missingDocs !== \"None\"\n    ? \"Request Missing Documents\"\n    : \"Proceed with Standard Processing\"\n}\n\nAdvisor Notes:\n${\n  missingDocs !== \"None\"\n    ? \"Missing documents require follow-up.\"\n    : \"All required documents are available.\"\n}\n`;\n\n$json.missing_docs = missingDocs;\n$json.advisor_summary = summary;\n\nreturn $input.item;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        0
+      ],
+      "id": "0e768df5-deff-4cb4-a6e9-e874b3899b56",
+      "name": "Generate Advisor Brief"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "a7eb2e56-57eb-4bdc-a786-1ba1c15605e2",
+              "leftValue": "={{ $json.complexity }}",
+              "rightValue": "Complex",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1120,
+        0
+      ],
+      "id": "6e5e52e6-ca51-4153-9ab8-2218538ce274",
+      "name": "Complexity Router"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9aedf3d2-9036-4fa6-899f-ca5af0eee4d0",
+              "name": "advisor_queue",
+              "value": "Senior Advisor",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1344,
+        -96
+      ],
+      "id": "091c15f4-9e09-4d61-a593-f9e000015117",
+      "name": "Senior Advisor Queue"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4b5eadd2-7afa-427d-aac9-8bf6bb5aba85",
+              "name": "advisor_queue",
+              "value": "Standard Advisor",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1344,
+        96
+      ],
+      "id": "fc861dc3-3be4-470a-9bac-e9f6131ca0f6",
+      "name": "Standard Advisor Queue"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1568,
+        0
+      ],
+      "id": "3bdc3d7f-f948-4f08-8d80-920a7ee4d816",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "13lrJ2xHcf5W671ya-zGUOZfdgX0dJLVMKMw6dDjvLd8",
+          "mode": "list",
+          "cachedResultName": "Prosperr Advisor Queue",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13lrJ2xHcf5W671ya-zGUOZfdgX0dJLVMKMw6dDjvLd8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13lrJ2xHcf5W671ya-zGUOZfdgX0dJLVMKMw6dDjvLd8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{$now}}",
+            "Email": "={{$json.email}}",
+            "Name": "={{$json.name}}",
+            "Income Type": "={{$json.income_type}}",
+            "Annual Income": "={{$json.annual_income}}",
+            "Complexity": "={{$json.complexity}}",
+            "Missing Docs": "={{$json.missing_docs}}",
+            "Advisor Queue": "={{$json.advisor_queue}}",
+            "Advisor Summary": "={{$json.advisor_summary}}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Income Type",
+              "displayName": "Income Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Annual Income",
+              "displayName": "Annual Income",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Complexity",
+              "displayName": "Complexity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Missing Docs",
+              "displayName": "Missing Docs",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Advisor Queue",
+              "displayName": "Advisor Queue",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Advisor Summary",
+              "displayName": "Advisor Summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "useAppend": true
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1792,
+        0
+      ],
+      "id": "6e29df10-197f-44db-b19f-0a8f3cf78773",
+      "name": "Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "1o3u8ODcfSsEEJjp",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "aryank.iitb@gmail.com",
+        "subject": "={{\n$json[\"Complexity\"] === \"Complex\"\n? \"🚨 \\\"Complex\\\" Tax Case - \" + $json[\"Name\"]\n: $json[\"Complexity\"] === \"Needs Review\"\n? \"⚠️ \\\"Needs Review\\\" Tax Case - \" + $json[\"Name\"]\n: \"✅ \\\"Simple\\\" Tax Case - \" + $json[\"Name\"]\n}}",
+        "message": "=<h2> {{\n$json[\"Complexity\"] === \"Complex\"\n? \"🚨 Client Tax Case\"\n: $json[\"Complexity\"] === \"Needs Review\"\n? \"⚠️ Client Tax Case\"\n: \"✅ Client Tax Case\"\n}}</h2>\n\n<h1>Client Name: {{$json[\"Name\"]}}</h1>\n\n<hr>\n\n<p><u><strong>Client Details:</strong></u></p>\n\n<ul>\n<li>Email: {{$json[\"Email\"]}}</li>\n<li>Income Type: {{$json[\"Income Type\"]}}</li>\n<li>Annual Income: ₹{{ Number($json[\"Annual Income\"]).toLocaleString('en-IN') }}</li>\n</ul>\n\n<p><u><strong>Case Assessment:</strong></u></p>\n\n<ul>\n<li>Complexity: {{$json[\"Complexity\"]}}</li>\n<li>Missing Documents: {{$json[\"Missing Docs\"]}}</li>\n<li>Advisor Queue: {{$json[\"Advisor Queue\"]}}</li>\n</ul>\n\n<p><u><strong>Next Actions:</strong></u></p>\n\n<ul>\n<li>Review submitted information</li>\n<li>Collect pending documents if any</li>\n<li>Schedule advisor consultation</li>\n</ul>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2016,
+        0
+      ],
+      "id": "645bd5da-c6e3-4176-ae53-e29ecaa96d2b",
+      "name": "Gmail",
+      "webhookId": "9897921c-1616-449a-94c1-acc851ba355b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "6oMosJkJfRndex6N",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Form Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Form Data": {
+      "main": [
+        [
+          {
+            "node": "Missing Docs Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Missing Docs Check": {
+      "main": [
+        [
+          {
+            "node": "Complexity Classifier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Complexity Classifier": {
+      "main": [
+        [
+          {
+            "node": "Generate Advisor Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Advisor Brief": {
+      "main": [
+        [
+          {
+            "node": "Complexity Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Complexity Router": {
+      "main": [
+        [
+          {
+            "node": "Senior Advisor Queue",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Standard Advisor Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Senior Advisor Queue": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Standard Advisor Queue": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "0068ad4d-44a3-4a29-bf61-607216fea0ef",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e5a36ee03533488331c8222251ea40e56f63232fc41a94cb9e0321670197c09a"
+  },
+  "id": "zvDAuLR89VQMWG6I",
+  "tags": []
+}
