@@ -6,7 +6,7 @@ The workflow reduces manual effort by automatically processing client informatio
 
 ---
 
-## Problem Statement
+## Problem Statement :
 
 Tax advisory teams often spend significant time on:
 
@@ -21,11 +21,11 @@ This creates delays, repetitive work, and inconsistent onboarding experiences.
 
 ---
 
-## Solution
+## Solution :
 
 This workflow automates the complete onboarding process from client submission to advisor notification.
 
-### Workflow Overview
+### Workflow Overview :
 
 ```text
 Client Submission
@@ -49,7 +49,7 @@ Email Notification
 
 ---
 
-## Workflow Architecture
+## Workflow Architecture :
 
 ### 1. Webhook Trigger
 
@@ -220,7 +220,7 @@ This enables advisors to immediately begin client engagement.
 
 ---
 
-## Tech Stack
+## Tech Stack :
 
 ### Workflow Automation
 
@@ -262,7 +262,7 @@ This enables advisors to immediately begin client engagement.
 
 ---
 
-## Business Impact
+## Business Impact :
 
 ### Before Automation
 
@@ -283,52 +283,8 @@ This enables advisors to immediately begin client engagement.
 
 ---
 
-## Repository Structure
 
-```text
-ai-tax-client-onboarding/
-
-│
-├── README.md
-├── workflow/
-│   └── onboarding-workflow.json
-│
-├── screenshots/
-│   ├── workflow-overview.png
-│   ├── routing-logic.png
-│   └── sheet-output.png
-│
-└── demo/
-    └── demo-video.mp4
-```
-
----
-
-## Workflow Screenshot
-
-Add the workflow image below:
-
-```markdown
-![Workflow Architecture](screenshots/workflow-overview.png)
-```
-
----
-
-## Skills Demonstrated
-
-- Workflow Automation
-- Business Process Automation
-- n8n Development
-- Decision Routing Logic
-- Google Workspace Integration
-- Process Optimization
-- Data Validation
-- Operational Automation
-- Client Onboarding Automation
-
----
-
-## Future Enhancements
+## Future Enhancements :
 
 - WhatsApp Notifications
 - CRM Integration
